@@ -26,11 +26,21 @@ public class Main {
         //toDo u wanna make sure that u have all the topics and u inform if smth new change
         List<ChatWindow> readers= new ArrayList<>();
         SwingUtilities.invokeLater( () ->{
-                    ChatWindow chatWindow = new ChatWindow("chat", "Kinga");
-                    readers.add(chatWindow);
+            ChatWindow chatWindow = null;
+            try {
+                chatWindow = new ChatWindow("chat", "Kinga");
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            readers.add(chatWindow);
                 });
         SwingUtilities.invokeLater( () -> {
-            ChatWindow chatWindow = new ChatWindow("chat", "Jak00b");
+            ChatWindow chatWindow = null;
+            try {
+                chatWindow = new ChatWindow("chat", "Jak00b");
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             readers.add(chatWindow);
         });
 

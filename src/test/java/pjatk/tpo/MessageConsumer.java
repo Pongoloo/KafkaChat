@@ -11,8 +11,7 @@ import java.util.Map;
 
 public class MessageConsumer{
     KafkaConsumer<String,String> kafkaConsumer;
-
-    public MessageConsumer(String topic, String id) {
+    public MessageConsumer( String id) {
 
         this.kafkaConsumer =  new KafkaConsumer<String,String>(
                 Map.of(
@@ -23,7 +22,5 @@ public class MessageConsumer{
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest"
                 )
         );
-        kafkaConsumer.subscribe(Collections.singletonList(topic));
-        kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(m -> System.out.println(m.value()));
     }
 }

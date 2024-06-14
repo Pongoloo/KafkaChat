@@ -2,6 +2,8 @@ package pjatk.tpo;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 
 import javax.swing.*;
 
@@ -22,7 +24,7 @@ public class ChatWindow extends JFrame {
     private JButton sendButton;
     private JTextArea messageField;
     private JButton loginButton;
-    private JTextField textField1;
+    private JTextField userID;
     private JComboBox availableChats;
     private JTextArea chatView;
     private JButton chatSwitchButton;
@@ -30,26 +32,66 @@ public class ChatWindow extends JFrame {
     private JTextField newChatNameField;
     private JComboBox activeUsers;
     private MessageConsumer messageConsumer;
+    // ToDo trzeba bedzie zmienic tutaj zeby ta mapa miala <topic=string, Map<TopicPartition,Timestamp>> i pozniej tymi offsetami bedzie mozna odczytywac
     private Map<String, List<String>> chats = new HashMap<>();
-    public ChatWindow(String topic, String id) {
-        setUpFrame(topic, id);
-        changeGraphics();
-        ExecutorService executorService = Executors.newFixedThreadPool(2);
+    private final String defaultChatName="chat";
+    private boolean isLoggedIn=false;
+    private Set<String> allUsers= new HashSet<>();
+
+    private void login(){
+        String userIDText = this.userID.getText();
+        if(allUsers.add(userIDText)){
+            messageConsumer=new MessageConsumer(userIDText);
+            enableChat(userIDText);
+        }
+        setTitle(userIDText  + " CHAT");
+        this.userID.setText("");
+        chats.putIfAbsent(defaultChatName, new ArrayList<>());
+        isLoggedIn=true;
+        loginButton.setText("logout");
+        this.revalidate();
+        this.repaint();
+
+     //   List<PartitionInfo> chat = messageConsumer.kafkaConsumer.partitionsFor("chat");
+     //   chat.stream().map( pi -> new TopicPartition(pi.topic(),pi.partition())).cole
+    //    messageConsumer.kafkaConsumer.offsetsForTimes()
+    }
+    private void logout(){
+        this.setTitle("Chat");
+        isLoggedIn=false;
+        loginButton.setText("login");
+        this.revalidate();
+        this.repaint();
+        messageConsumer.kafkaConsumer.unsubscribe();
+    }
+    private void addLoginAndLogout(){
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(isLoggedIn){
+                    logout();
+                }else{
+                    login();
+                }
+            }
+        });
+    }
+    private void enableChat(String id){
+        messageConsumer.kafkaConsumer.subscribe(Collections.singletonList(defaultChatName));
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
         startReading(executorService);
         addSendingMessages(id);
         addAddingChats();
         addSwitchingChats();
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-            }
-        });
+    }
+    public ChatWindow(String topic, String id) throws InterruptedException {
+        setUpFrame(topic, id);
+        changeGraphics();
+        addLoginAndLogout();
     }
     private void setUpFrame(String topic, String id) {
-        messageConsumer = new MessageConsumer(topic, id);
-        chats.put(topic, new ArrayList<>());
-        this.availableChats.addItem(topic);
+     //   messageConsumer = new MessageConsumer(id);
+        this.availableChats.addItem(defaultChatName);
         this.setDefaultCloseOperation(EXIT_ON_CLOSE);
         this.setPreferredSize(new Dimension(600, 800));
         this.add(mainPanel);
@@ -62,10 +104,8 @@ public class ChatWindow extends JFrame {
         executorService.submit(() -> {
             while (true) {
                 messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(m -> {
-                    System.out.println("on chat:" + m.topic() + " mess:" + m.value());
                     processMessage(m);
                     //   chatView.append(m.value() + '\n');
-                    //   System.out.println("KURWA KURWA KURWA KURWA KURWA KURWA");
                 });
             }
         });
@@ -78,11 +118,9 @@ public class ChatWindow extends JFrame {
         }
     }
     private void addSendingMessages(String id) {
-        System.out.println("we are adding the actionlistener XD");
         this.sendButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                System.out.println("nigga wtf");
                 LocalDateTime now = LocalDateTime.now();
                 String timestamp = formatTime(now.getHour()) + ":" + formatTime(now.getMinute()) + ":" + formatTime(now.getSecond());
 
@@ -111,10 +149,7 @@ public class ChatWindow extends JFrame {
                 String chatText = chats.get(availableChats.getSelectedItem()).stream().collect(Collectors.joining());
                 chatView.setText(chatText);
 //                messageConsumer.kafkaConsumer.unsubscribe();
-//                System.out.println("unsubscribed");
 //                messageConsumer.kafkaConsumer.ad(Collections.singleton(availableChats.getSelectedItem().toString()));
-//                System.out.println("subscriped to a new topic:"+availableChats.getSelectedItem().toString());
-//              //  System.out.println("I WANNNNNNNNNNNNA SEE THIS ");
             }
         });
     }
