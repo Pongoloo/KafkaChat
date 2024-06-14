@@ -10,7 +10,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -43,6 +45,9 @@ public class ChatWindow extends JFrame {
         if(allUsers.add(userIDText)){
             messageConsumer=new MessageConsumer(userIDText);
             enableChat(userIDText);
+        }else{
+            messageConsumer.kafkaConsumer.subscribe(Collections.singleton("chat"));
+            messageConsumer.kafkaConsumer.offsetsForTimes(messageConsumer.userOffsets);
         }
         setTitle(userIDText  + " CHAT");
         this.userID.setText("");
@@ -52,9 +57,13 @@ public class ChatWindow extends JFrame {
         this.revalidate();
         this.repaint();
 
-     //   List<PartitionInfo> chat = messageConsumer.kafkaConsumer.partitionsFor("chat");
-     //   chat.stream().map( pi -> new TopicPartition(pi.topic(),pi.partition())).cole
-    //    messageConsumer.kafkaConsumer.offsetsForTimes()
+        List<PartitionInfo> chat = messageConsumer.kafkaConsumer.partitionsFor("chat");
+        List<TopicPartition> partitions = chat.stream()
+                .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                .toList();
+        messageConsumer.userOffsets=
+                Map.of(partitions.get(0),Timestamp.from(Instant.now()).getTime()
+        );
     }
     private void logout(){
         this.setTitle("Chat");

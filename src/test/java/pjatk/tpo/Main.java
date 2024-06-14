@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 
 public class Main {
     public static void main(String[] args) {
-        EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(1).
+        EmbeddedKafkaBroker embeddedKafkaBroker = new EmbeddedKafkaBroker(1,true,1).
                 kafkaPorts(9092);
 
         embeddedKafkaBroker.afterPropertiesSet();
