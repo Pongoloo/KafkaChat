@@ -1,5 +1,6 @@
 package pjatk.tpo;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import javax.swing.*;
@@ -7,6 +8,7 @@ import java.awt.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,8 +22,10 @@ public class ChatWindow extends JFrame{
     private JButton createButton;
     private JComboBox availableChats;
     private JButton goToButton;
+    private JButton logoutButton;
     private MessageConsumer messageConsumer;
     private final String consumerID;
+    private final String metaDataTopic="metadata";
     public ChatWindow(String id,int position) throws HeadlessException {
         this.consumerID=id;
         this.setTitle(id + " chat");
@@ -36,6 +40,9 @@ public class ChatWindow extends JFrame{
         sendButton.addActionListener(e -> {
             MessageProducer.send(new ProducerRecord<>("haha",formatMessage(messageField.getText())));
             messageField.setText("");
+        });
+        logoutButton.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic,"logout "+ id));
         });
     }
     private String formatTime(int time){
@@ -54,13 +61,28 @@ public class ChatWindow extends JFrame{
 
     }
     private void startReading(ExecutorService executorService) {
-        messageConsumer.kafkaConsumer.subscribe(Collections.singletonList("haha"));
+
+        ArrayList<String> topics = new ArrayList<String>();
+        topics.add("haha");
+        topics.add(metaDataTopic);
+        messageConsumer.kafkaConsumer.subscribe(topics);
         executorService.submit(() -> {
             while (true) {
-                messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(m -> {
-                    chatView.append(m.value() + '\n');
-                });
+                messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
             }
         });
+    }
+    private void handleMessage(ConsumerRecord<String,String> message){
+        if(message.topic().equals(metaDataTopic)){
+            if(message.value().equals("logout "+consumerID)){
+                // potencjalnei tu moze byc unsubcribew
+                messageConsumer.kafkaConsumer.close();
+                dispose();
+            }
+        } else{
+            System.out.println(message.topic() + " " + message.value() + " " + consumerID);
+            chatView.append(message.value() + '\n');
+        }
+
     }
 }
