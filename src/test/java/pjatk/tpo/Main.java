@@ -22,30 +22,7 @@ public class Main {
                 kafkaPorts(9092);
 
         embeddedKafkaBroker.afterPropertiesSet();
-
-        //toDo u wanna make sure that u have all the topics and u inform if smth new change
-        List<ChatWindow> readers= new ArrayList<>();
-        SwingUtilities.invokeLater( () ->{
-            ChatWindow chatWindow = null;
-            try {
-                chatWindow = new ChatWindow("chat", "Kinga");
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            readers.add(chatWindow);
-                });
-        SwingUtilities.invokeLater( () -> {
-            ChatWindow chatWindow = null;
-            try {
-                chatWindow = new ChatWindow("chat", "Jak00b");
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            readers.add(chatWindow);
-        });
-
-
-
+        SwingUtilities.invokeLater(LoginWindow::new);
     }
 }
 
