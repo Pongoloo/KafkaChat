@@ -27,5 +27,6 @@ public class MessageConsumer{
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest"
                 )
         );
+
     }
 }

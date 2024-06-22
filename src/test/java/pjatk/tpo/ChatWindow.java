@@ -7,7 +7,6 @@ import java.awt.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,11 +16,15 @@ public class ChatWindow extends JFrame{
     private JTextArea chatView;
     private JTextField messageField;
     private JButton sendButton;
+    private JTextField chatNameField;
+    private JButton createButton;
+    private JComboBox availableChats;
+    private JButton goToButton;
     private MessageConsumer messageConsumer;
     private final String consumerID;
     public ChatWindow(String id,int position) throws HeadlessException {
         this.consumerID=id;
-        this.setTitle(id);
+        this.setTitle(id + " chat");
         this.add(mainPanel);
         this.setPreferredSize(new Dimension(500,400));
         this.setLocation(position,600);
