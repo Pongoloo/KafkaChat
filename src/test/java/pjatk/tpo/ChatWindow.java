@@ -2,6 +2,7 @@ package pjatk.tpo;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -66,6 +68,8 @@ public class ChatWindow extends JFrame{
         topics.add("haha");
         topics.add(metaDataTopic);
         messageConsumer.kafkaConsumer.subscribe(topics);
+        Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+        messageConsumer.kafkaConsumer.seekToBeginning(assignment);
         executorService.submit(() -> {
             while (true) {
                 messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
@@ -80,6 +84,8 @@ public class ChatWindow extends JFrame{
                 dispose();
             }
         } else{
+            Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+            System.out.println(assignment);
             System.out.println(message.topic() + " " + message.value() + " " + consumerID);
             chatView.append(message.value() + '\n');
         }
