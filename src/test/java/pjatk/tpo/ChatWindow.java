@@ -32,7 +32,9 @@ public class ChatWindow extends JFrame{
     private final String consumerID;
     private final String metaDataTopic="metadata";
     private String currentTopic="default";
+    private boolean justLoggedIn=true;
     public ChatWindow(String id,int position) throws HeadlessException {
+        availableChats.addItem(currentTopic);
         this.consumerID=id;
         this.setTitle(id + " chat");
         this.add(mainPanel);
@@ -148,6 +150,35 @@ public class ChatWindow extends JFrame{
                 }
             } else if(message.value().startsWith("create")){
                 availableChats.addItem(message.value().substring(7));
+            } else if(message.value().startsWith("users:") && justLoggedIn){
+                availableChats.removeAllItems();
+                availableUsers.removeAllItems();
+                System.out.println(message.value());
+                String[] usersAndChats = message.value().split("]chats:\\[");
+                System.out.println(usersAndChats[0]);
+                System.out.println(usersAndChats[1]);
+                String users = usersAndChats[0].substring(7);
+                StringBuilder sbd = new StringBuilder();
+                for (int i = 0; i < users.length(); i++) {
+                    if(users.charAt(i)==','){
+                        availableUsers.addItem(sbd.toString());
+                        sbd= new StringBuilder();
+                    } else{
+                        sbd.append(users.charAt(i));
+                    }
+                }
+                availableUsers.addItem(sbd.toString());
+                sbd = new StringBuilder();
+                for (int i = 0; i < usersAndChats[1].length()-1; i++) {
+                    if(usersAndChats[1].charAt(i)==','){
+                        availableChats.addItem(sbd.toString());
+                        sbd= new StringBuilder();
+                    } else{
+                        sbd.append(usersAndChats[1].charAt(i));
+                    }
+                }
+                availableChats.addItem(sbd.toString());
+                justLoggedIn=false;
             }
         } else{
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();

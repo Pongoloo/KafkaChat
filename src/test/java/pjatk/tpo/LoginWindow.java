@@ -15,7 +15,10 @@ public class LoginWindow extends JFrame {
     private JTextField loginField;
     private JButton loginButton;
     private JPanel mainPanel;
+
     private Set<String> currentlyLoggedUsers = new HashSet<>();
+    private Set<String> currentlyActiveChats = new HashSet<>();
+
     private int amountOfChatWindows =0;
     private int screenWidth;
     private int screenHeight;
@@ -27,7 +30,8 @@ public class LoginWindow extends JFrame {
         return 100+500*amountOfChatWindows;
     }
     public LoginWindow() throws HeadlessException {
-        messageConsumer=new MessageConsumer("logindude");
+        messageConsumer=new MessageConsumer("coordinator");
+        currentlyActiveChats.add("default");
         this.setPreferredSize(new Dimension(300,100));
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
          screenWidth = screenSize.width;
@@ -53,6 +57,16 @@ public class LoginWindow extends JFrame {
                             if(m.value().startsWith("logout")){
                                 String user = m.value().substring(7);
                                 currentlyLoggedUsers.remove(user);
+                            } else if(m.value().startsWith("create")){
+                                String chat = m.value().substring(7);
+                                currentlyActiveChats.add(chat);
+                                System.out.println("FROM COORDINATOR RECEIVED INFO ABOUT NEW CHAT:"+chat);
+                            } else if(m.value().startsWith("login")){
+                                String user = m.value().substring(6);
+                                System.out.println(this.currentlyLoggedUsers);
+                                System.out.println(this.currentlyActiveChats);
+                                System.out.println("users:"+currentlyLoggedUsers + "chats:"+currentlyActiveChats);
+                                MessageProducer.send(new ProducerRecord<>("metadata","users:"+currentlyLoggedUsers + "chats:"+currentlyActiveChats));
                             }
                         });
             }
