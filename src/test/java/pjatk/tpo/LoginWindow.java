@@ -39,7 +39,6 @@ public class LoginWindow extends JFrame {
         int x = (screenWidth - 300) / 2;
         int y = 300;
 
-        // Set the frame location
         this.setLocation(x, y);
 
         System.out.println(screenHeight + "  "  + y);
@@ -81,8 +80,11 @@ public class LoginWindow extends JFrame {
     private void login(){
         if(loginField.getText().equals("") ||
                 loginField.getText()==null){
-            JOptionPane.showMessageDialog(this, "imo 30 punktow za to");
-        } else{
+            JOptionPane.showMessageDialog(this, "Insert username.");
+        } else if(loginField.getText().contains(",")){
+            JOptionPane.showMessageDialog(this, "Username can not contain {','}.");
+
+        }else{
             SwingUtilities.invokeLater( () ->{
                 int chatWindowPosition = getChatWindowPosition();
                 amountOfChatWindows++;

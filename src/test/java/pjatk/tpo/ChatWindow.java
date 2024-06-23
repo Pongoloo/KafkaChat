@@ -12,10 +12,7 @@ import java.awt.event.WindowEvent;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,18 +23,27 @@ public class ChatWindow extends JFrame {
     private JButton sendButton;
     private JTextField chatNameField;
     private JButton createButton;
-    private JComboBox availableChats;
     private JButton goToButton;
     private JButton logoutButton;
-    private JComboBox availableUsers;
     private MessageConsumer messageConsumer;
     private final String consumerID;
     private final String metaDataTopic = "metadata";
     private String currentTopic = "default";
     private boolean justLoggedIn = true;
 
+    private JComboBox availableUsers;
+    private DefaultComboBoxModel<String> availableUsersModel;
+    private JComboBox availableChats;
+    private DefaultComboBoxModel<String> availableChatsModel;
+
+
     public ChatWindow(String id, int position) throws HeadlessException {
-        availableChats.addItem(currentTopic);
+        availableUsersModel = new DefaultComboBoxModel<>();
+        availableUsers.setModel(availableUsersModel);
+        availableChatsModel = new DefaultComboBoxModel<>();
+        availableChats.setModel(availableChatsModel);
+
+        availableChatsModel.addElement(currentTopic);
         this.consumerID = id;
         this.setTitle(id + " chat");
         this.add(mainPanel);
@@ -76,9 +82,23 @@ public class ChatWindow extends JFrame {
             MessageProducer.send(new ProducerRecord<>(metaDataTopic, "switch to:" + availableChats.getSelectedItem() + "}user=" + consumerID));
         });
         createButton.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "create " + chatNameField.getText()));
-            chatNameField.setText("");
+            handleCreatingChat();
         });
+    }
+    private void handleCreatingChat(){
+        if(chatNameField.getText().contains(":") || chatNameField.getText().contains(" ")){
+            JOptionPane.showMessageDialog(this, "Chat name can not contain {',' , ':' , ' '}");
+        } else{
+            Set<String> usersModel = new HashSet<>();
+            for (int i = 0; i < availableUsersModel.getSize(); i++) {
+                usersModel.add(availableUsersModel.getElementAt(i));
+            }
+            Rectangle bounds = this.getBounds();
+            double x = bounds.getX();
+            double y = bounds.getY();
+            new ChatCreator(usersModel,chatNameField.getText(),x,y);
+            chatNameField.setText("");
+        }
     }
     private String formatTime(int time) {
         if (time < 10) {
@@ -128,7 +148,25 @@ public class ChatWindow extends JFrame {
             }
             // CREATE CHAT
             else if (message.value().startsWith("create")) {
-                availableChats.addItem(message.value().substring(7));
+                String chatNameAndUsers = message.value().substring(7);
+                int i = chatNameAndUsers.indexOf(' ');
+                String chatName = chatNameAndUsers.substring(0, i);
+                int userListIndex = chatNameAndUsers.indexOf(':');
+                String userListString = chatNameAndUsers.substring(userListIndex + 2,chatNameAndUsers.length()-1);
+                StringBuilder sbd = new StringBuilder();
+                Set<String> userInvited = new HashSet<>();
+                for (int j = 0; j < userListString.length(); j++) {
+                    if(userListString.charAt(j)==','){
+                        userInvited.add(sbd.toString());
+                        sbd= new StringBuilder();
+                    } else{
+                        sbd.append(userListString.charAt(j));
+                    }
+                }
+                userInvited.add(sbd.toString());
+                if(userInvited.contains(consumerID)){
+                    availableChats.addItem(chatName);
+                }
             }
             // GET AVAILABLE USERS AND CHATS
             else if (message.value().startsWith("users:") && justLoggedIn) {
