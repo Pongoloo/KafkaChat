@@ -71,26 +71,30 @@ public class LoginWindow extends JFrame {
                         });
             }
         });
-        loginButton.addActionListener(e -> {
-            if(loginField.getText().equals("") ||
-            loginField.getText()==null){
-                JOptionPane.showMessageDialog(this, "imo 30 punktow za to");
-            } else{
-                SwingUtilities.invokeLater( () ->{
-                    int chatWindowPosition = getChatWindowPosition();
-                    amountOfChatWindows++;
-                    if(currentlyLoggedUsers.contains(loginField.getText())){
-                        JOptionPane.showMessageDialog(this, "user "+loginField.getText()+ " already logged in");
-                    } else{
-                        new ChatWindow(loginField.getText(), chatWindowPosition);
-                        currentlyLoggedUsers.add(loginField.getText());
-                        MessageProducer.send(new ProducerRecord<>("metadata","login "+loginField.getText()));
-                        loginField.setText("");
-                    }
-
-                });
-            }
-
+        loginField.addActionListener(e -> {
+            login();
         });
+        loginButton.addActionListener(e -> {
+           login();
+        });
+    }
+    private void login(){
+        if(loginField.getText().equals("") ||
+                loginField.getText()==null){
+            JOptionPane.showMessageDialog(this, "imo 30 punktow za to");
+        } else{
+            SwingUtilities.invokeLater( () ->{
+                int chatWindowPosition = getChatWindowPosition();
+                amountOfChatWindows++;
+                if(currentlyLoggedUsers.contains(loginField.getText())){
+                    JOptionPane.showMessageDialog(this, "user "+loginField.getText()+ " already logged in");
+                } else{
+                    new ChatWindow(loginField.getText(), chatWindowPosition);
+                    currentlyLoggedUsers.add(loginField.getText());
+                    MessageProducer.send(new ProducerRecord<>("metadata","login "+loginField.getText()));
+                    loginField.setText("");
+                }
+            });
+        }
     }
 }
