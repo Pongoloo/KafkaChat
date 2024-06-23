@@ -1,6 +1,7 @@
 package pjatk.tpo;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 
@@ -79,7 +80,7 @@ public class ChatWindow extends JFrame{
         topics.add(metaDataTopic);
         messageConsumer.kafkaConsumer.subscribe(topics);
         if (MessageConsumer.userOffsets.get(consumerID).get(currentTopic)==null) {
-            messageConsumer.kafkaConsumer.poll(Duration.of(50, ChronoUnit.MILLIS));
+            messageConsumer.kafkaConsumer.poll(Duration.of(50, ChronoUnit.MILLIS)).forEach(this::handleMessage);
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
             Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
             long partitionOffset=0;
@@ -97,6 +98,8 @@ public class ChatWindow extends JFrame{
         });
     }
     private void handleMessage(ConsumerRecord<String,String> message){
+        System.out.println("AT THE BEGINNNIG ON THE FUNCTION messageTopic:" + message.topic() +  " messageValue:"+message.value() +  " currently reading dude:"+consumerID);
+
         if(message.topic().equals(metaDataTopic)){
             if(message.value().equals("logout "+consumerID)){
                 // potencjalnei tu moze byc unsubcribew
@@ -104,7 +107,7 @@ public class ChatWindow extends JFrame{
                 for (TopicPartition topicPartition : assignment) {
                     if(!topicPartition.topic().equals("metadata")){
                         Long offset = MessageConsumer.userOffsets.get(consumerID).get(topicPartition.topic());
-                        System.out.println(offset);
+                        System.out.println(offset + "XD");
                         messageConsumer.kafkaConsumer.seek(topicPartition,offset);
                         Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
                         System.out.println(topicPartitionLongMap);
@@ -127,7 +130,20 @@ public class ChatWindow extends JFrame{
                     topics.add(metaDataTopic);
                     topics.add(split[0]);
                     messageConsumer.kafkaConsumer.subscribe(topics);
+                    messageConsumer.kafkaConsumer.poll(Duration.of(50, ChronoUnit.MILLIS)).forEach(this::handleMessage);
                     currentTopic=split[0];
+                    if (MessageConsumer.userOffsets.get(consumerID).get(currentTopic)==null) {
+                        messageConsumer.kafkaConsumer.poll(Duration.of(50, ChronoUnit.MILLIS));
+                        Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+                        Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
+                        long partitionOffset=0;
+                        for (TopicPartition key : topicPartitionLongMap.keySet()) {
+                            if (key.topic().equals(currentTopic)) {
+                                partitionOffset=topicPartitionLongMap.get(key);
+                            }
+                        }
+                        MessageConsumer.userOffsets.get(consumerID).put(currentTopic,partitionOffset);
+                    }
                     chatView.setText("");
                 }
             } else if(message.value().startsWith("create")){
@@ -135,7 +151,8 @@ public class ChatWindow extends JFrame{
             }
         } else{
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
-            System.out.println(messageConsumer.kafkaConsumer.endOffsets(assignment));
+            System.out.println(messageConsumer.kafkaConsumer.endOffsets(assignment) + " offsets?");
+            System.out.println("topic +  value + consumerID");
             System.out.println(message.topic() + " " + message.value() + " " + consumerID);
             chatView.append(message.value() + '\n');
         }

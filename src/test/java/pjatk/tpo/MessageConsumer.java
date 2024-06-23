@@ -28,8 +28,8 @@ public class MessageConsumer{
                         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,"localhost:9092",
                         ConsumerConfig.GROUP_ID_CONFIG, id,
                         ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName(),
-                        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName()
-                        //ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest"
+                        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName(),
+                        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest"
                 )
         );
 
