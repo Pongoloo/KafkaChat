@@ -1,5 +1,7 @@
 package pjatk.tpo;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
+
 import javax.swing.*;
 import java.awt.*;
 import java.time.Duration;
@@ -68,6 +70,7 @@ public class LoginWindow extends JFrame {
                     } else{
                         new ChatWindow(loginField.getText(), chatWindowPosition);
                         currentlyLoggedUsers.add(loginField.getText());
+                        MessageProducer.send(new ProducerRecord<>("metadata","login "+loginField.getText()));
                         loginField.setText("");
                     }
 
