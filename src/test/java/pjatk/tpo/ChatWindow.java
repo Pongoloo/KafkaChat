@@ -30,7 +30,7 @@ public class ChatWindow extends JFrame{
     private MessageConsumer messageConsumer;
     private final String consumerID;
     private final String metaDataTopic="metadata";
-    private String currentTopic="haha";
+    private String currentTopic="default";
     public ChatWindow(String id,int position) throws HeadlessException {
         this.consumerID=id;
         this.setTitle(id + " chat");
@@ -75,10 +75,21 @@ public class ChatWindow extends JFrame{
     private void startReading(ExecutorService executorService) {
 
         ArrayList<String> topics = new ArrayList<String>();
-        topics.add("haha");
+        topics.add(currentTopic);
         topics.add(metaDataTopic);
         messageConsumer.kafkaConsumer.subscribe(topics);
-
+        if (MessageConsumer.userOffsets.get(consumerID).get(currentTopic)==null) {
+            messageConsumer.kafkaConsumer.poll(Duration.of(50, ChronoUnit.MILLIS));
+            Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+            Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
+            long partitionOffset=0;
+            for (TopicPartition key : topicPartitionLongMap.keySet()) {
+                if (key.topic().equals(currentTopic)) {
+                    partitionOffset=topicPartitionLongMap.get(key);
+                }
+            }
+            MessageConsumer.userOffsets.get(consumerID).put(currentTopic,partitionOffset);
+        }
         executorService.submit(() -> {
             while (true) {
                 messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
@@ -92,7 +103,9 @@ public class ChatWindow extends JFrame{
                 Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
                 for (TopicPartition topicPartition : assignment) {
                     if(!topicPartition.topic().equals("metadata")){
-                        messageConsumer.kafkaConsumer.seek(topicPartition,0);
+                        Long offset = MessageConsumer.userOffsets.get(consumerID).get(topicPartition.topic());
+                        System.out.println(offset);
+                        messageConsumer.kafkaConsumer.seek(topicPartition,offset);
                         Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
                         System.out.println(topicPartitionLongMap);
                         Map<TopicPartition, Long> topicPartitionLongMap1 = messageConsumer.kafkaConsumer.beginningOffsets(assignment);

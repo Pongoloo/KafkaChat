@@ -14,9 +14,14 @@ import java.util.Map;
 
 public class MessageConsumer{
     KafkaConsumer<String,String> kafkaConsumer;
-     Map<TopicPartition, Long> userOffsets = new HashMap<>();
+
+    static Map<String,Map<String, Long>> userOffsets = new HashMap<>();
 
     public MessageConsumer( String id) {
+        if (userOffsets.get(id)==null) {
+            userOffsets.put(id,new HashMap<>());
+            userOffsets.get(id).put("metadata", 0L);
+        }
 
         this.kafkaConsumer =  new KafkaConsumer<String,String>(
                 Map.of(
