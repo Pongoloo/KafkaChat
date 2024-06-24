@@ -119,8 +119,6 @@ public class ChatWindow extends JFrame {
                 String users = usersAndChats[0].substring(7);
                 StringBuilder sbd = new StringBuilder();
                 addAvailableUsers(users, sbd);
-                sbd = new StringBuilder();
-                addAvailableChats(usersAndChats[1], sbd);
                 justLoggedIn = false;
             }
             else if(message.value().startsWith("kick")){
@@ -380,18 +378,11 @@ public class ChatWindow extends JFrame {
         availableUsersModel.addElement(sbd.toString());
     }
 
-    private void addAvailableChats(String chats, StringBuilder sbd) {
+    private void addAvailableChats() {
         availableChats.removeAllItems();
-        for (int i = 0; i < chats.length() - 1; i++) {
-            if (chats.charAt(i) == ',') {
-                availableChatsModel.addElement(sbd.toString());
-                sbd = new StringBuilder();
-                i++;
-            } else {
-                sbd.append(chats.charAt(i));
-            }
-        }
-        availableChatsModel.addElement(sbd.toString());
+        Set<String> subscription = messageConsumer.kafkaConsumer.subscription();
+        subscription.remove(metaDataTopic);
+        availableChatsModel.addAll(subscription);
     }
 
     private void handleSwitchMessage(ConsumerRecord<String, String> message) {
