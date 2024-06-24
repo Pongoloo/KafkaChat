@@ -36,14 +36,18 @@ public class ChatWindow extends JFrame {
     private JComboBox availableChats;
     private DefaultComboBoxModel<String> availableChatsModel;
 
+    private boolean startedReading=false;
+
 
     public ChatWindow(String id, int position) throws HeadlessException {
-        availableUsersModel = new DefaultComboBoxModel<>();
-        availableUsers.setModel(availableUsersModel);
+
+        availableChatsModel= new DefaultComboBoxModel<>();
         availableChatsModel = new DefaultComboBoxModel<>();
-        availableChats.setModel(availableChatsModel);
 
         availableChatsModel.addElement(currentTopic);
+        messageConsumer = new MessageConsumer(id);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        startReading(executorService);
         this.consumerID = id;
         this.setTitle(id + " chat");
         this.add(mainPanel);
@@ -51,85 +55,11 @@ public class ChatWindow extends JFrame {
         this.setLocation(position, 600);
         this.pack();
         this.setVisible(true);
-        messageConsumer = new MessageConsumer(id);
-        ExecutorService executorService = Executors.newFixedThreadPool(1);
-        startReading(executorService);
+
         addListeners();
     }
-    private void addListeners(){
-        this.messageField.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
-            messageField.setText("");
-        });
-        this.chatNameField.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "create " + chatNameField.getText()));
-            chatNameField.setText("");
-        });
-        this.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                MessageProducer.send(new ProducerRecord<>(metaDataTopic, "logout " + consumerID));
-            }
-        });
-        sendButton.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
-            messageField.setText("");
-        });
-        logoutButton.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "logout " + consumerID));
-        });
-        goToButton.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "switch to:" + availableChats.getSelectedItem() + "}user=" + consumerID));
-        });
-        createButton.addActionListener(e -> {
-            handleCreatingChat();
-        });
-    }
-    private void handleCreatingChat(){
-        if(chatNameField.getText().contains(":") || chatNameField.getText().contains(" ")){
-            JOptionPane.showMessageDialog(this, "Chat name can not contain {',' , ':' , ' '}");
-        } else{
-            Set<String> usersModel = new HashSet<>();
-            for (int i = 0; i < availableUsersModel.getSize(); i++) {
-                usersModel.add(availableUsersModel.getElementAt(i));
-            }
-            Rectangle bounds = this.getBounds();
-            double x = bounds.getX();
-            double y = bounds.getY();
-            new ChatCreator(usersModel,chatNameField.getText(),x,y);
-            chatNameField.setText("");
-        }
-    }
-    private String formatTime(int time) {
-        if (time < 10) {
-            return "0" + time;
-        } else {
-            return "" + time;
-        }
-    }
-
-    private String formatMessage(String message) {
-        LocalDateTime now = LocalDateTime.now();
-        String hour = formatTime(now.getHour());
-        String minute = formatTime(now.getMinute());
-        String second = formatTime(now.getSecond());
-        return hour + ":" + minute + ":" + second + " " + consumerID + "-" + message;
-    }
-
-    private void startReading(ExecutorService executorService) {
-        ArrayList<String> topics = new ArrayList<String>();
-        topics.add(currentTopic);
-        topics.add(metaDataTopic);
-        messageConsumer.kafkaConsumer.subscribe(topics);
-        executorService.submit(() -> {
-            while (true) {
-                messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
-            }
-        });
-    }
-
     private void handleMessage(ConsumerRecord<String, String> message) {
-
+        System.out.println("reading:"+consumerID + " topic:"+message.topic() + " message:"+message.value());
         if (message.topic().equals(metaDataTopic)) {
             //LOGOUT
             if(message.value().startsWith("logout")){
@@ -203,6 +133,80 @@ public class ChatWindow extends JFrame {
             chatView.append(message.value() + '\n');
         }
     }
+    private void addListeners(){
+        this.messageField.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
+            messageField.setText("");
+        });
+        this.chatNameField.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "create " + chatNameField.getText()));
+            chatNameField.setText("");
+        });
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                MessageProducer.send(new ProducerRecord<>(metaDataTopic, "logout " + consumerID));
+            }
+        });
+        sendButton.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
+            messageField.setText("");
+        });
+        logoutButton.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "logout " + consumerID));
+        });
+        goToButton.addActionListener(e -> {
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "switch to:" + availableChats.getSelectedItem() + "}user=" + consumerID));
+        });
+        createButton.addActionListener(e -> {
+            handleCreatingChat();
+        });
+    }
+    private void handleCreatingChat(){
+        if(chatNameField.getText().contains(":") || chatNameField.getText().contains(" ")){
+            JOptionPane.showMessageDialog(this, "Chat name can not contain {',' , ':' , ' '}");
+        } else{
+            Set<String> usersModel = new HashSet<>();
+            for (int i = 0; i < availableUsersModel.getSize(); i++) {
+                usersModel.add(availableUsersModel.getElementAt(i));
+            }
+            Rectangle bounds = this.getBounds();
+            double x = bounds.getX();
+            double y = bounds.getY();
+            new ChatCreator(usersModel,chatNameField.getText(),x,y);
+            chatNameField.setText("");
+        }
+    }
+    private String formatTime(int time) {
+        if (time < 10) {
+            return "0" + time;
+        } else {
+            return "" + time;
+        }
+    }
+
+    private String formatMessage(String message) {
+        LocalDateTime now = LocalDateTime.now();
+        String hour = formatTime(now.getHour());
+        String minute = formatTime(now.getMinute());
+        String second = formatTime(now.getSecond());
+        return hour + ":" + minute + ":" + second + " " + consumerID + "-" + message;
+    }
+
+    private void startReading(ExecutorService executorService) {
+        ArrayList<String> topics = new ArrayList<String>();
+        topics.add(currentTopic);
+        topics.add(metaDataTopic);
+        messageConsumer.kafkaConsumer.subscribe(topics);
+        executorService.submit(() -> {
+            startedReading=true;
+            while (true) {
+                messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
+            }
+        });
+    }
+
+
 
     private void addAvailableUsers(String users, StringBuilder sbd) {
         availableUsers.removeAllItems();

@@ -93,7 +93,36 @@ public class LoginWindow extends JFrame {
             JOptionPane.showMessageDialog(this, "I dont know, but that doesn't change the fact that in Australia there are 48 million kangaroos and in Uruguay there are 3,457,480 inhabitants, so if kangaroos decide to invade Uruguay, each Uruguayan will have to fight 14 kangaroos");
         });
     }
+    private void login() {
+        if(!isUserInputCorrect()){
+            return;
+        }
+        if(!areCredentialsCorrect()){
+            return;
+        }
+        SwingUtilities.invokeLater(() -> {
+            int chatWindowPosition = getChatWindowPosition();
+            amountOfChatWindows++;
+            ChatWindow chatWindow = new ChatWindow(loginField.getText(), chatWindowPosition);
+            currentlyLoggedUsers.add(loginField.getText());
+            MessageProducer.send(new ProducerRecord<>("metadata", "login " + loginField.getText()));
+            loginField.setText("");
+            passwordField.setText("");
 
+        });
+    }
+    private void register() {
+        // moze byc tak ze tylko raz bedzie poprawnie
+        if(!isUserInputCorrect()){
+            return;
+        }
+        String login = loginField.getText();
+        String password = new String(passwordField.getPassword());
+        userCredentials.add(new UserCredentials(login, password));
+        loginField.setText("");
+        passwordField.setText("");
+        JOptionPane.showMessageDialog(this,"Registered successfully");
+    }
     private boolean isUserInputCorrect() {
         if (loginField.getText().isEmpty() ||
                 loginField.getText() == null) {
@@ -111,18 +140,7 @@ public class LoginWindow extends JFrame {
         return true;
     }
 
-    private void register() {
-        // moze byc tak ze tylko raz bedzie poprawnie
-        if(!isUserInputCorrect()){
-            return;
-        }
-        String login = loginField.getText();
-        String password = new String(passwordField.getPassword());
-        userCredentials.add(new UserCredentials(login, password));
-        loginField.setText("");
-        passwordField.setText("");
-        JOptionPane.showMessageDialog(this,"Registered successfully");
-    }
+
 
     private boolean areCredentialsCorrect() {
         String login = loginField.getText();
@@ -137,24 +155,7 @@ public class LoginWindow extends JFrame {
 
     }
 
-    private void login() {
-        if(!isUserInputCorrect()){
-            return;
-        }
-        if(!areCredentialsCorrect()){
-            return;
-        }
-        SwingUtilities.invokeLater(() -> {
-            int chatWindowPosition = getChatWindowPosition();
-            amountOfChatWindows++;
-            new ChatWindow(loginField.getText(), chatWindowPosition);
-            currentlyLoggedUsers.add(loginField.getText());
-            MessageProducer.send(new ProducerRecord<>("metadata", "login " + loginField.getText()));
-            loginField.setText("");
-            passwordField.setText("");
 
-        });
-    }
 
 
 }
