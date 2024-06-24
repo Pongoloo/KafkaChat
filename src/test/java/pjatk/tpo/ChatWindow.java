@@ -348,9 +348,6 @@ public class ChatWindow extends JFrame {
         topics.add(currentTopic);
         topics.add(metaDataTopic);
         messageConsumer.kafkaConsumer.subscribe(topics);
-        MessageConsumer.userOffsets.get(consumerID).putIfAbsent(currentTopic,0L);
-        MessageConsumer.userOffsets.get(consumerID).putIfAbsent(metaDataTopic,0L);
-
         executorService.submit(() -> {
             while (true) {
                 ConsumerRecords<String, String> records = messageConsumer.kafkaConsumer.poll(Duration.ofSeconds(1));
