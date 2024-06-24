@@ -115,6 +115,48 @@ public class ChatWindow extends JFrame {
                 addAvailableChats(usersAndChats[1], sbd);
                 justLoggedIn = false;
             }
+            else if(message.value().startsWith("kick")){
+                String userAndTopic = message.value().substring(5);
+                StringBuilder sbd = new StringBuilder();
+                String user="";
+                String topic="";
+                for (int i = 0; i < userAndTopic.length(); i++) {
+                    if(userAndTopic.charAt(i)==' '){
+                        user=sbd.toString();
+                        sbd=new StringBuilder();
+                    } else{
+                        sbd.append(userAndTopic.charAt(i));
+                    }
+                }
+                topic=sbd.toString();
+                if(consumerID.equals(user)){
+                    handleOffsets();
+                    messageConsumer.kafkaConsumer.close();
+                    messageConsumer=new MessageConsumer(consumerID);
+                    availableChatsModel.removeElement(topic);
+                    chatView.append("You've been kicked from the chat :C\n");
+                    currentTopic="";
+                    messageConsumer.kafkaConsumer.subscribe(Collections.singletonList(metaDataTopic));
+                }
+            }
+            else if(message.value().startsWith("invite ")){
+                String userAndChat = message.value().substring(7);
+                StringBuilder sbd = new StringBuilder();
+                String user="";
+                String chat="";
+                for (int i = 0; i < userAndChat.length(); i++) {
+                    if(userAndChat.charAt(i)==' '){
+                        user=sbd.toString();
+                        sbd=new StringBuilder();
+                    }else{
+                        sbd.append(userAndChat.charAt(i));
+                    }
+                }
+                chat=sbd.toString();
+                if(consumerID.equals(user)){
+                    availableChatsModel.addElement(chat);
+                }
+            }
         } else {
             if (MessageConsumer.userOffsets.get(consumerID).get(currentTopic) == null) {
                 System.out.println(messageConsumer.kafkaConsumer.assignment().size() + " SIZE ASSIGNMENTOW");
@@ -129,26 +171,51 @@ public class ChatWindow extends JFrame {
                 }
                 MessageConsumer.userOffsets.get(consumerID).put(currentTopic, partitionOffset);
             }
-
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
-            if(message.value().endsWith("/help")){
-                JOptionPane.showMessageDialog(this, "/mute {Username} mutes a specific user in this chat " +
-                        "\n/ban {Username} only creator of a chat can use this,  kicks a person which is unable to join the chat again" +
-                        "\n/unban {Username} only creator of a chat can use this, allows a person to join the chat again" +
-                        "\n/invite {Username} adds a person to the currently open chat");
-            }
             chatView.append(message.value() + '\n');
         }
     }
+    private void handleSendingMessage(){
+        String message = messageField.getText();
+        if(message.equals("/help")){
+            JOptionPane.showMessageDialog(this, """
+                        /mute {Username} mutes a specific user in this chat \
 
-    private void addListeners() {
-        this.messageField.addActionListener(e -> {
+                        /kick {Username} kicks a person from the current chat \
+                        
+                        /ban {Username} only creator of a chat can use this,  kicks a person which is unable to join the chat again\
+
+                        /unban {Username} only creator of a chat can use this, allows a person to join the chat again\
+
+                        /invite {Username} adds a person to the currently open chat""");
+        }
+        else if(message.startsWith("/kick ")){
+            String userToKick = message.substring(6);
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "kick "+userToKick + " "+currentTopic));
+            messageField.setText("");
+        }
+        else if(message.startsWith("/ban")){
+
+        }
+        else if(message.startsWith("/unban")){
+
+        }
+        else if(message.startsWith("/invite ")){
+            String userToInvite = message.substring(8);
+            MessageProducer.send(new ProducerRecord<>(metaDataTopic,"invite "+userToInvite + " " + currentTopic));
+            messageField.setText("");
+        }
+        else{
             MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
             messageField.setText("");
+        }
+    }
+    private void addListeners() {
+        this.messageField.addActionListener(e -> {
+            handleSendingMessage();
         });
         this.chatNameField.addActionListener(e -> {
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic, "create " + chatNameField.getText()));
-            chatNameField.setText("");
+            handleSendingMessage();
         });
         this.addWindowListener(new WindowAdapter() {
             @Override
