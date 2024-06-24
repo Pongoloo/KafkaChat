@@ -38,6 +38,8 @@ public class ChatWindow extends JFrame {
 
     boolean firstTimeReading = true;
     private Map<String,Set<String>> mutedUsers = new HashMap<>();
+    private static Map<String,Set<String>> bannedUsers = new HashMap<>();
+    private static Map<String,String> chatAdmins = new HashMap<>();
 
     public ChatWindow(String id, int position) throws HeadlessException {
 
@@ -86,25 +88,30 @@ public class ChatWindow extends JFrame {
             }
             // CREATE CHAT
             else if (message.value().startsWith("create")) {
-                String chatNameAndUsers = message.value().substring(7);
-                int i = chatNameAndUsers.indexOf(' ');
-                String chatName = chatNameAndUsers.substring(0, i);
-                int userListIndex = chatNameAndUsers.indexOf(':');
-                String userListString = chatNameAndUsers.substring(userListIndex + 2, chatNameAndUsers.length() - 1);
+
+                String[] split = message.value().split(" ");
+                String chatName = split[1];
+                String creator= split[2];
+                String users = split[3];
+                String userList = users.substring(7);
                 StringBuilder sbd = new StringBuilder();
-                Set<String> userInvited = new HashSet<>();
-                for (int j = 0; j < userListString.length(); j++) {
-                    if (userListString.charAt(j) == ',') {
-                        userInvited.add(sbd.toString());
-                        sbd = new StringBuilder();
-                    } else {
-                        sbd.append(userListString.charAt(j));
+                Set<String> usersInvited = new HashSet<>();
+                for (int i = 0; i < userList.length()-1; i++) {
+                    if(userList.charAt(i)==','){
+                        usersInvited.add(sbd.toString());
+                        sbd=new StringBuilder();
+                    } else{
+                        sbd.append(userList.charAt(i));
                     }
                 }
-                userInvited.add(sbd.toString());
-                if (userInvited.contains(consumerID)) {
+                usersInvited.add(sbd.toString());
+
+                if (usersInvited.contains(consumerID)) {
                     availableChatsModel.addElement(chatName);
+                    chatAdmins.put(chatName,creator);
+                    System.out.println(chatAdmins);
                 }
+
             }
             // GET AVAILABLE USERS AND CHATS
             else if (message.value().startsWith("users:") && justLoggedIn) {
@@ -158,6 +165,22 @@ public class ChatWindow extends JFrame {
                     availableChatsModel.addElement(chat);
                 }
             }
+            else if(message.value().startsWith("ban")){
+                String[] split = message.value().split(" ");
+                String userToBan = split[1];
+                String fromTopic = split[2];
+                if(consumerID.equals(userToBan)){
+                    handleOffsets();
+                    messageConsumer.kafkaConsumer.close();
+                    messageConsumer=new MessageConsumer(consumerID);
+                    availableChatsModel.removeElement(fromTopic);
+                    chatView.append("You've been banned from the chat :C\n");
+                    bannedUsers.putIfAbsent(currentTopic,new HashSet<>());
+                    bannedUsers.get(currentTopic).add(consumerID);
+                    currentTopic="";
+                    messageConsumer.kafkaConsumer.subscribe(Collections.singletonList(metaDataTopic));
+                }
+            }
         } else {
             if (MessageConsumer.userOffsets.get(consumerID).get(currentTopic) == null) {
                 System.out.println(messageConsumer.kafkaConsumer.assignment().size() + " SIZE ASSIGNMENTOW");
@@ -207,10 +230,10 @@ public class ChatWindow extends JFrame {
 
                         /kick {Username} kicks a person from the current chat \
                         
-                        /ban {Username} only creator of a chat can use this,  kicks a person which is unable to join the chat again\
-
-                        /unban {Username} only creator of a chat can use this, allows a person to join the chat again\
-
+                        /ban {Username} only accessible to the creator of the chat, kicks someone without possibility to come back unless unbanned\
+                        
+                        /unban {Username} only accessible to the creator of the chat, lifts the ban and the person can be invited to the chat again\
+                        
                         /invite {Username} adds a person to the currently open chat""");
         }
         else if(message.startsWith("/kick ")){
@@ -218,22 +241,39 @@ public class ChatWindow extends JFrame {
             MessageProducer.send(new ProducerRecord<>(metaDataTopic, "kick "+userToKick + " "+currentTopic));
             messageField.setText("");
         }
-        else if(message.startsWith("/ban ")){
-
-        }
-        else if(message.startsWith("/unban ")){
-
-        }
         else if(message.startsWith("/invite ")){
             String userToInvite = message.substring(8);
-            MessageProducer.send(new ProducerRecord<>(metaDataTopic,"invite "+userToInvite + " " + currentTopic));
-            messageField.setText("");
+            if(bannedUsers.get(currentTopic).contains(userToInvite)){
+                JOptionPane.showMessageDialog(this,"this user is banned from this chat");
+            } else{
+                MessageProducer.send(new ProducerRecord<>(metaDataTopic,"invite "+userToInvite + " " + currentTopic));
+                messageField.setText("");
+            }
         }
         else if (message.startsWith("/mute ")){
             String userToMute = message.substring(6);
             mutedUsers.putIfAbsent(currentTopic,new HashSet<>());
             mutedUsers.get(currentTopic).add(userToMute);
             messageField.setText("");
+        }
+        else if (message.startsWith("/ban ")){
+            if(chatAdmins.get(currentTopic).equals(consumerID)){
+                String userToBan = message.substring(5);
+                MessageProducer.send(new ProducerRecord<>(metaDataTopic,"ban "+userToBan+" " + currentTopic));
+                messageField.setText("");
+            } else{
+                JOptionPane.showMessageDialog(this,"You're not the creator of the chat, that function is forbidden.");
+            }
+        }
+        else if(message.startsWith("/unban ")){
+            if(chatAdmins.get(currentTopic).equals(consumerID)){
+                String userToUnban = message.substring(7);
+                bannedUsers.get(currentTopic).remove(userToUnban);
+                messageField.setText("");
+            } else{
+                JOptionPane.showMessageDialog(this,"You're not the creator of the chat, that function is forbidden.");
+
+            }
         }
         else{
             MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
@@ -279,7 +319,7 @@ public class ChatWindow extends JFrame {
             Rectangle bounds = this.getBounds();
             double x = bounds.getX();
             double y = bounds.getY();
-            new ChatCreator(usersModel, chatNameField.getText(), x, y);
+            new ChatCreator(usersModel, chatNameField.getText(), x, y,consumerID);
             chatNameField.setText("");
         }
     }

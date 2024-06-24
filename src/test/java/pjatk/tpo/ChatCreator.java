@@ -15,7 +15,7 @@ public class ChatCreator extends JFrame{
     private JButton createButton;
     private JList users;
 
-    public ChatCreator(Set<String> userSet, String chatName,double x , double y) throws HeadlessException {
+    public ChatCreator(Set<String> userSet, String chatName,double x , double y, String creator) throws HeadlessException {
         this.setTitle("Chat creator");
         this.add(panel1);
         this.setLocation((int)x+50,(int)y-100);
@@ -42,7 +42,7 @@ public class ChatCreator extends JFrame{
                         " users:"+usersString);
                 MessageProducer.send(new ProducerRecord<>(
                                 "metadata",
-                                "create "+chatName +
+                                "create "+chatName + " " + creator +
                                         " users:"+usersString));
                 dispose();
             }
