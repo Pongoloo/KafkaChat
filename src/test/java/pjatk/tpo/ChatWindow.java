@@ -131,6 +131,12 @@ public class ChatWindow extends JFrame {
             }
 
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+            if(message.value().endsWith("/help")){
+                JOptionPane.showMessageDialog(this, "/mute {Username} mutes a specific user in this chat " +
+                        "\n/ban {Username} only creator of a chat can use this,  kicks a person which is unable to join the chat again" +
+                        "\n/unban {Username} only creator of a chat can use this, allows a person to join the chat again" +
+                        "\n/invite {Username} adds a person to the currently open chat");
+            }
             chatView.append(message.value() + '\n');
         }
     }
@@ -197,20 +203,7 @@ public class ChatWindow extends JFrame {
         return hour + ":" + minute + ":" + second + " " + consumerID + "-" + message;
     }
 
-    //    private void startReading(ExecutorService executorService) {
-//        ArrayList<String> topics = new ArrayList<String>();
-//        topics.add(currentTopic);
-//        topics.add(metaDataTopic);
-//        messageConsumer.kafkaConsumer.subscribe(topics);
-//
-//
-//        executorService.submit(() -> {
-//            while (true) {
-//              //  messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
-//                MessageProducer.send(new ProducerRecord<>("metadata","just anything at this point please work"));
-//            }
-//        });
-//    }
+
     private boolean gotData = false;
 
     private void startReading(ExecutorService executorService) {
@@ -226,7 +219,6 @@ public class ChatWindow extends JFrame {
                 ConsumerRecords<String, String> records = messageConsumer.kafkaConsumer.poll(Duration.ofSeconds(1));
                 for (ConsumerRecord<String, String> record : records) {
                     handleMessage(record);
-                    // After handling the message, send a new ProducerRecord
                 }
                 if (!gotData) {
                     Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();

@@ -129,10 +129,15 @@ public class LoginWindow extends JFrame {
         }
         String login = loginField.getText();
         String password = new String(passwordField.getPassword());
-        userCredentials.add(new UserCredentials(login, password));
-        loginField.setText("");
-        passwordField.setText("");
-        JOptionPane.showMessageDialog(this,"Registered successfully");
+        long count = userCredentials.stream().filter(c -> c.getLogin().equals(login)).count();
+        if(count>0){
+            JOptionPane.showMessageDialog(this,"A user with this username exists already.");
+        } else{
+            userCredentials.add(new UserCredentials(login, password));
+            loginField.setText("");
+            passwordField.setText("");
+            JOptionPane.showMessageDialog(this,"Registered successfully");
+        }
     }
     private boolean isUserInputCorrect() {
         if (loginField.getText().isEmpty() ||
