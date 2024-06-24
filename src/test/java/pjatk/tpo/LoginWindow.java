@@ -64,15 +64,27 @@ public class LoginWindow extends JFrame {
                                 String user = m.value().substring(7);
                                 currentlyLoggedUsers.remove(user);
                             } else if (m.value().startsWith("create")) {
-                                String chat = m.value().substring(7);
-                                currentlyActiveChats.add(chat);
-                                System.out.println("FROM COORDINATOR RECEIVED INFO ABOUT NEW CHAT:" + chat);
+                                String chatAndUsers = m.value().substring(7);
+                                StringBuilder sbd = new StringBuilder();
+                                for (int i = 0; i < chatAndUsers.length(); i++) {
+                                    if(chatAndUsers.charAt(i)==' '){
+                                        break;
+                                    } else{
+                                        sbd.append(chatAndUsers.charAt(i));
+                                    }
+                                }
+                                currentlyActiveChats.add(sbd.toString());
                             } else if (m.value().startsWith("login")) {
                                 String user = m.value().substring(6);
                                 System.out.println(this.currentlyLoggedUsers);
                                 System.out.println(this.currentlyActiveChats);
                                 System.out.println("users:" + currentlyLoggedUsers + "chats:" + currentlyActiveChats);
                                 MessageProducer.send(new ProducerRecord<>("metadata", "users:" + currentlyLoggedUsers + "chats:" + currentlyActiveChats));
+                            } else if(m.value().startsWith("fetch users&chats")){
+                                String user = m.value().substring(18);
+                                Set<String> activeChatsForUser = MessageConsumer.userOffsets.get(user).keySet();
+                                activeChatsForUser.remove("metadata");
+                                MessageProducer.send(new ProducerRecord<>("metadata", "users:" + currentlyLoggedUsers + "chats:" + activeChatsForUser));
                             }
                         });
             }
@@ -103,12 +115,11 @@ public class LoginWindow extends JFrame {
         SwingUtilities.invokeLater(() -> {
             int chatWindowPosition = getChatWindowPosition();
             amountOfChatWindows++;
-            ChatWindow chatWindow = new ChatWindow(loginField.getText(), chatWindowPosition);
+            new ChatWindow(loginField.getText(), chatWindowPosition);
             currentlyLoggedUsers.add(loginField.getText());
-            MessageProducer.send(new ProducerRecord<>("metadata", "login " + loginField.getText()));
+            MessageProducer.send(new ProducerRecord<>("metadata","login "+loginField.getText()));
             loginField.setText("");
             passwordField.setText("");
-
         });
     }
     private void register() {

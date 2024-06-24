@@ -36,18 +36,15 @@ public class ChatWindow extends JFrame {
     private JComboBox availableChats;
     private DefaultComboBoxModel<String> availableChatsModel;
 
-    private boolean startedReading=false;
-
+    boolean firstTimeReading = true;
 
     public ChatWindow(String id, int position) throws HeadlessException {
 
-        availableChatsModel= new DefaultComboBoxModel<>();
         availableChatsModel = new DefaultComboBoxModel<>();
+        availableUsersModel = new DefaultComboBoxModel<>();
+        availableChats.setModel(availableChatsModel);
+        availableUsers.setModel(availableUsersModel);
 
-        availableChatsModel.addElement(currentTopic);
-        messageConsumer = new MessageConsumer(id);
-        ExecutorService executorService = Executors.newFixedThreadPool(1);
-        startReading(executorService);
         this.consumerID = id;
         this.setTitle(id + " chat");
         this.add(mainPanel);
@@ -55,19 +52,23 @@ public class ChatWindow extends JFrame {
         this.setLocation(position, 600);
         this.pack();
         this.setVisible(true);
-
+        availableChatsModel.addElement(currentTopic);
+        messageConsumer = new MessageConsumer(id);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        startReading(executorService);
         addListeners();
     }
+
     private void handleMessage(ConsumerRecord<String, String> message) {
-        System.out.println("reading:"+consumerID + " topic:"+message.topic() + " message:"+message.value());
+        System.out.println("reading:" + consumerID + " topic:" + message.topic() + " message:" + message.value());
         if (message.topic().equals(metaDataTopic)) {
             //LOGOUT
-            if(message.value().startsWith("logout")){
+            if (message.value().startsWith("logout")) {
                 if (message.value().equals("logout " + consumerID)) {
                     handleOffsets();
                     messageConsumer.kafkaConsumer.close();
                     dispose();
-                } else{
+                } else {
                     String loggedOutUser = message.value().substring(7);
                     availableUsersModel.removeElement(loggedOutUser);
                 }
@@ -88,19 +89,19 @@ public class ChatWindow extends JFrame {
                 int i = chatNameAndUsers.indexOf(' ');
                 String chatName = chatNameAndUsers.substring(0, i);
                 int userListIndex = chatNameAndUsers.indexOf(':');
-                String userListString = chatNameAndUsers.substring(userListIndex + 2,chatNameAndUsers.length()-1);
+                String userListString = chatNameAndUsers.substring(userListIndex + 2, chatNameAndUsers.length() - 1);
                 StringBuilder sbd = new StringBuilder();
                 Set<String> userInvited = new HashSet<>();
                 for (int j = 0; j < userListString.length(); j++) {
-                    if(userListString.charAt(j)==','){
+                    if (userListString.charAt(j) == ',') {
                         userInvited.add(sbd.toString());
-                        sbd= new StringBuilder();
-                    } else{
+                        sbd = new StringBuilder();
+                    } else {
                         sbd.append(userListString.charAt(j));
                     }
                 }
                 userInvited.add(sbd.toString());
-                if(userInvited.contains(consumerID)){
+                if (userInvited.contains(consumerID)) {
                     availableChatsModel.addElement(chatName);
                 }
             }
@@ -122,8 +123,8 @@ public class ChatWindow extends JFrame {
                 long partitionOffset = 0;
                 for (TopicPartition key : topicPartitionLongMap.keySet()) {
                     if (key.topic().equals(currentTopic)) {
-                        partitionOffset = topicPartitionLongMap.get(key)-1;
-                        System.out.println(partitionOffset + " PRZYPISANY OFFSET DLA " + consumerID + " na " +currentTopic );
+                        partitionOffset = topicPartitionLongMap.get(key) - 1;
+                        System.out.println(partitionOffset + " PRZYPISANY OFFSET DLA " + consumerID + " na " + currentTopic);
                     }
                 }
                 MessageConsumer.userOffsets.get(consumerID).put(currentTopic, partitionOffset);
@@ -133,7 +134,8 @@ public class ChatWindow extends JFrame {
             chatView.append(message.value() + '\n');
         }
     }
-    private void addListeners(){
+
+    private void addListeners() {
         this.messageField.addActionListener(e -> {
             MessageProducer.send(new ProducerRecord<>(currentTopic, formatMessage(messageField.getText())));
             messageField.setText("");
@@ -162,10 +164,11 @@ public class ChatWindow extends JFrame {
             handleCreatingChat();
         });
     }
-    private void handleCreatingChat(){
-        if(chatNameField.getText().contains(":") || chatNameField.getText().contains(" ")){
+
+    private void handleCreatingChat() {
+        if (chatNameField.getText().contains(":") || chatNameField.getText().contains(" ")) {
             JOptionPane.showMessageDialog(this, "Chat name can not contain {',' , ':' , ' '}");
-        } else{
+        } else {
             Set<String> usersModel = new HashSet<>();
             for (int i = 0; i < availableUsersModel.getSize(); i++) {
                 usersModel.add(availableUsersModel.getElementAt(i));
@@ -173,10 +176,11 @@ public class ChatWindow extends JFrame {
             Rectangle bounds = this.getBounds();
             double x = bounds.getX();
             double y = bounds.getY();
-            new ChatCreator(usersModel,chatNameField.getText(),x,y);
+            new ChatCreator(usersModel, chatNameField.getText(), x, y);
             chatNameField.setText("");
         }
     }
+
     private String formatTime(int time) {
         if (time < 10) {
             return "0" + time;
@@ -193,20 +197,48 @@ public class ChatWindow extends JFrame {
         return hour + ":" + minute + ":" + second + " " + consumerID + "-" + message;
     }
 
+    //    private void startReading(ExecutorService executorService) {
+//        ArrayList<String> topics = new ArrayList<String>();
+//        topics.add(currentTopic);
+//        topics.add(metaDataTopic);
+//        messageConsumer.kafkaConsumer.subscribe(topics);
+//
+//
+//        executorService.submit(() -> {
+//            while (true) {
+//              //  messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
+//                MessageProducer.send(new ProducerRecord<>("metadata","just anything at this point please work"));
+//            }
+//        });
+//    }
+    private boolean gotData = false;
+
     private void startReading(ExecutorService executorService) {
-        ArrayList<String> topics = new ArrayList<String>();
+        ArrayList<String> topics = new ArrayList<>();
         topics.add(currentTopic);
         topics.add(metaDataTopic);
         messageConsumer.kafkaConsumer.subscribe(topics);
+        MessageConsumer.userOffsets.get(consumerID).putIfAbsent(currentTopic,0L);
+        MessageConsumer.userOffsets.get(consumerID).putIfAbsent(metaDataTopic,0L);
+
         executorService.submit(() -> {
-            startedReading=true;
             while (true) {
-                messageConsumer.kafkaConsumer.poll(Duration.of(1, ChronoUnit.SECONDS)).forEach(this::handleMessage);
+                ConsumerRecords<String, String> records = messageConsumer.kafkaConsumer.poll(Duration.ofSeconds(1));
+                for (ConsumerRecord<String, String> record : records) {
+                    handleMessage(record);
+                    // After handling the message, send a new ProducerRecord
+                }
+                if (!gotData) {
+                    Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
+                    if (assignment.size()>1) {
+                        MessageProducer.send(new ProducerRecord<>(metaDataTopic, "metadata", "fetch users&chats "+consumerID));
+                        gotData=true;
+                    }
+                }
+
             }
         });
     }
-
-
 
     private void addAvailableUsers(String users, StringBuilder sbd) {
         availableUsers.removeAllItems();
@@ -288,7 +320,7 @@ public class ChatWindow extends JFrame {
         for (TopicPartition topicPartition : assignment) {
             if (!topicPartition.topic().equals("metadata")) {
                 Long offset = MessageConsumer.userOffsets.get(consumerID).get(topicPartition.topic());
-                if(offset == null){
+                if (offset == null) {
                     return;
                 }
                 messageConsumer.kafkaConsumer.seek(topicPartition, offset);
