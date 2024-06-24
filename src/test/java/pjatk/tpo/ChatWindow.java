@@ -132,15 +132,21 @@ public class ChatWindow extends JFrame {
 
         if (message.topic().equals(metaDataTopic)) {
             //LOGOUT
-            if (message.value().equals("logout " + consumerID)) {
-                handleOffsets();
-                messageConsumer.kafkaConsumer.close();
-                dispose();
+            if(message.value().startsWith("logout")){
+                if (message.value().equals("logout " + consumerID)) {
+                    handleOffsets();
+                    messageConsumer.kafkaConsumer.close();
+                    dispose();
+                } else{
+                    String loggedOutUser = message.value().substring(7);
+                    availableUsersModel.removeElement(loggedOutUser);
+                }
             }
+
             //LOGIN
             else if (message.value().startsWith("login")) {
                 String newUser = message.value().substring(6);
-                availableUsers.addItem(newUser);
+                availableUsersModel.addElement(newUser);
             }
             // SWITCH CHAT
             else if (message.value().startsWith("switch")) {
@@ -165,7 +171,7 @@ public class ChatWindow extends JFrame {
                 }
                 userInvited.add(sbd.toString());
                 if(userInvited.contains(consumerID)){
-                    availableChats.addItem(chatName);
+                    availableChatsModel.addElement(chatName);
                 }
             }
             // GET AVAILABLE USERS AND CHATS
@@ -202,28 +208,28 @@ public class ChatWindow extends JFrame {
         availableUsers.removeAllItems();
         for (int i = 0; i < users.length(); i++) {
             if (users.charAt(i) == ',') {
-                availableUsers.addItem(sbd.toString());
+                availableUsersModel.addElement(sbd.toString());
                 sbd = new StringBuilder();
                 i++;
             } else {
                 sbd.append(users.charAt(i));
             }
         }
-        availableUsers.addItem(sbd.toString());
+        availableUsersModel.addElement(sbd.toString());
     }
 
     private void addAvailableChats(String chats, StringBuilder sbd) {
         availableChats.removeAllItems();
         for (int i = 0; i < chats.length() - 1; i++) {
             if (chats.charAt(i) == ',') {
-                availableChats.addItem(sbd.toString());
+                availableChatsModel.addElement(sbd.toString());
                 sbd = new StringBuilder();
                 i++;
             } else {
                 sbd.append(chats.charAt(i));
             }
         }
-        availableChats.addItem(sbd.toString());
+        availableChatsModel.addElement(sbd.toString());
     }
 
     private void handleSwitchMessage(ConsumerRecord<String, String> message) {
@@ -278,7 +284,9 @@ public class ChatWindow extends JFrame {
         for (TopicPartition topicPartition : assignment) {
             if (!topicPartition.topic().equals("metadata")) {
                 Long offset = MessageConsumer.userOffsets.get(consumerID).get(topicPartition.topic());
-                System.out.println(offset + "XD");
+                if(offset == null){
+                    return;
+                }
                 messageConsumer.kafkaConsumer.seek(topicPartition, offset);
                 Map<TopicPartition, Long> topicPartitionLongMap = messageConsumer.kafkaConsumer.endOffsets(assignment);
                 System.out.println(topicPartitionLongMap);
