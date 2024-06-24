@@ -37,6 +37,7 @@ public class ChatWindow extends JFrame {
     private DefaultComboBoxModel<String> availableChatsModel;
 
     boolean firstTimeReading = true;
+    private Map<String,Set<String>> mutedUsers = new HashMap<>();
 
     public ChatWindow(String id, int position) throws HeadlessException {
 
@@ -172,8 +173,31 @@ public class ChatWindow extends JFrame {
                 MessageConsumer.userOffsets.get(consumerID).put(currentTopic, partitionOffset);
             }
             Set<TopicPartition> assignment = messageConsumer.kafkaConsumer.assignment();
-            chatView.append(message.value() + '\n');
+            if(!checkIfMuted(message)){
+                chatView.append(message.value() + '\n');
+            }
         }
+    }
+    private boolean checkIfMuted(ConsumerRecord<String,String> message){
+        //11:11:11 xd-mesag
+        String userAndMessage = message.value().substring(9);
+        StringBuilder sbd = new StringBuilder();
+        String userToMute="";
+        for (int i = 0; i <userAndMessage.length(); i++) {
+            if(userAndMessage.charAt(i)=='-'){
+                userToMute=sbd.toString();
+                break;
+            }
+            else{
+                sbd.append(userAndMessage.charAt(i));
+            }
+        }
+        if(mutedUsers.get(message.topic())!=null){
+            if(mutedUsers.get(message.topic()).contains(userToMute)){
+                return true;
+            }
+        }
+        return false;
     }
     private void handleSendingMessage(){
         String message = messageField.getText();
@@ -194,15 +218,21 @@ public class ChatWindow extends JFrame {
             MessageProducer.send(new ProducerRecord<>(metaDataTopic, "kick "+userToKick + " "+currentTopic));
             messageField.setText("");
         }
-        else if(message.startsWith("/ban")){
+        else if(message.startsWith("/ban ")){
 
         }
-        else if(message.startsWith("/unban")){
+        else if(message.startsWith("/unban ")){
 
         }
         else if(message.startsWith("/invite ")){
             String userToInvite = message.substring(8);
             MessageProducer.send(new ProducerRecord<>(metaDataTopic,"invite "+userToInvite + " " + currentTopic));
+            messageField.setText("");
+        }
+        else if (message.startsWith("/mute ")){
+            String userToMute = message.substring(6);
+            mutedUsers.putIfAbsent(currentTopic,new HashSet<>());
+            mutedUsers.get(currentTopic).add(userToMute);
             messageField.setText("");
         }
         else{
