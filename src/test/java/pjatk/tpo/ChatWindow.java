@@ -55,7 +55,7 @@ public class ChatWindow extends JFrame {
         this.setLocation(position, 600);
         this.pack();
         this.setVisible(true);
-        availableChatsModel.addElement(currentTopic);
+        availableChatsModel.addAll(LoginWindow.userChats.get(consumerID));
         messageConsumer = new MessageConsumer(id);
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         startReading(executorService);
@@ -105,7 +105,11 @@ public class ChatWindow extends JFrame {
                     }
                 }
                 usersInvited.add(sbd.toString());
-
+                System.out.println("KURWA KURWA KURWA KURWA ");
+                System.out.println(usersInvited);
+                for (String user : usersInvited) {
+                    LoginWindow.userChats.get(user).add(chatName);
+                }
                 if (usersInvited.contains(consumerID)) {
                     availableChatsModel.addElement(chatName);
                     chatAdmins.put(chatName,creator);
@@ -119,6 +123,7 @@ public class ChatWindow extends JFrame {
                 String users = usersAndChats[0].substring(7);
                 StringBuilder sbd = new StringBuilder();
                 addAvailableUsers(users, sbd);
+                addAvailableChats();
                 justLoggedIn = false;
             }
             else if(message.value().startsWith("kick")){
@@ -236,11 +241,13 @@ public class ChatWindow extends JFrame {
         }
         else if(message.startsWith("/kick ")){
             String userToKick = message.substring(6);
+            LoginWindow.userChats.get(userToKick).remove(currentTopic);
             MessageProducer.send(new ProducerRecord<>(metaDataTopic, "kick "+userToKick + " "+currentTopic));
             messageField.setText("");
         }
         else if(message.startsWith("/invite ")){
             String userToInvite = message.substring(8);
+            LoginWindow.userChats.get(userToInvite).add(currentTopic);
             if(bannedUsers.get(currentTopic).contains(userToInvite)){
                 JOptionPane.showMessageDialog(this,"this user is banned from this chat");
             } else{
@@ -257,6 +264,7 @@ public class ChatWindow extends JFrame {
         else if (message.startsWith("/ban ")){
             if(chatAdmins.get(currentTopic).equals(consumerID)){
                 String userToBan = message.substring(5);
+                LoginWindow.userChats.get(userToBan).remove(currentTopic);
                 MessageProducer.send(new ProducerRecord<>(metaDataTopic,"ban "+userToBan+" " + currentTopic));
                 messageField.setText("");
             } else{
@@ -380,9 +388,7 @@ public class ChatWindow extends JFrame {
 
     private void addAvailableChats() {
         availableChats.removeAllItems();
-        Set<String> subscription = messageConsumer.kafkaConsumer.subscription();
-        subscription.remove(metaDataTopic);
-        availableChatsModel.addAll(subscription);
+        availableChatsModel.addAll(LoginWindow.userChats.get(consumerID));
     }
 
     private void handleSwitchMessage(ConsumerRecord<String, String> message) {

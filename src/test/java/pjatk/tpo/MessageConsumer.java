@@ -11,12 +11,14 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class MessageConsumer{
     KafkaConsumer<String,String> kafkaConsumer;
 
     // user -> map<topic,offset>
     static Map<String,Map<String, Long>> userOffsets = new HashMap<>();
+    static Map<String, Set<String>> userTopics = new HashMap<>();
 
     public MessageConsumer( String id) {
         if (userOffsets.get(id)==null) {

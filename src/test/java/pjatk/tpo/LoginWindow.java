@@ -24,6 +24,7 @@ public class LoginWindow extends JFrame {
     private Set<String> currentlyLoggedUsers = new HashSet<>();
     private Set<String> currentlyActiveChats = new HashSet<>();
 
+    public static Map<String,Set<String>> userChats = new HashMap<>();
     private int amountOfChatWindows = 0;
     private int screenWidth;
     private int screenHeight;
@@ -82,8 +83,7 @@ public class LoginWindow extends JFrame {
                                 MessageProducer.send(new ProducerRecord<>("metadata", "users:" + currentlyLoggedUsers + "chats:" + currentlyActiveChats));
                             } else if(m.value().startsWith("fetch users&chats")){
                                 String user = m.value().substring(18);
-                                Set<String> activeChatsForUser = MessageConsumer.userOffsets.get(user).keySet();
-                                activeChatsForUser.remove("metadata");
+                                Set<String> activeChatsForUser = userChats.get(user);
                                 MessageProducer.send(new ProducerRecord<>("metadata", "users:" + currentlyLoggedUsers + "chats:" + activeChatsForUser));
                             }
                         });
@@ -112,6 +112,8 @@ public class LoginWindow extends JFrame {
         if(!areCredentialsCorrect()){
             return;
         }
+        userChats.putIfAbsent(loginField.getText(),new HashSet<>());
+        userChats.get(loginField.getText()).add("default");
         SwingUtilities.invokeLater(() -> {
             int chatWindowPosition = getChatWindowPosition();
             amountOfChatWindows++;
